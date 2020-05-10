@@ -9,6 +9,8 @@ import lombok.Data;
 @Data
 public class OrderPayDTO {
 
+    private String code;
+
     private Integer type;
 
 }

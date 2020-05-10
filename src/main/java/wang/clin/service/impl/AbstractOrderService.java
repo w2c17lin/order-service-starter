@@ -8,8 +8,10 @@ import wang.clin.annotation.*;
 import wang.clin.enums.OrderType;
 import wang.clin.pojo.bo.OrderBO;
 import wang.clin.pojo.bo.OrderServiceBO;
+import wang.clin.pojo.dto.OrderLogisticsDTO;
 import wang.clin.pojo.dto.OrderOrderDTO;
 import wang.clin.pojo.dto.OrderPayDTO;
+import wang.clin.pojo.dto.OrderReviewDTO;
 import wang.clin.service.*;
 
 import java.lang.annotation.Annotation;
@@ -40,46 +42,69 @@ public abstract class AbstractOrderService implements OrderService {
 
     public AbstractOrderService(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
-        initHandlers();
+        initServices();
     }
 
     @Override
     public OrderBO order(OrderOrderDTO order) {
-        OrderType type = OrderType.of(order.getType());
-        return orderBasicsServices.getHandler(type).order(order);
+        var type = OrderType.of(order.getType());
+        return orderBasicsServices
+                .getHandler(type, applicationContext).order(order);
     }
 
     @Override
     public OrderBO pay(OrderPayDTO order) {
-        OrderType type = OrderType.of(order.getType());
-        return orderPayServices.getHandler(type).pay(order);
+        var type = OrderType.of(order.getType());
+        orderPayServices
+                .getHandler(type, applicationContext).pay(order);
+        return orderErpServices
+                .getHandler(type, applicationContext).erp(order);
     }
 
-    protected void initHandlers() {
-        orderBasicsServices = initHandler(OrderBasics.class,
-                OrderServiceBO.of(OrderBasicsService.class, applicationContext));
-        orderErpServices = initHandler(OrderErp.class,
-                OrderServiceBO.of(OrderErpService.class, applicationContext));
-        orderLogisticsServices = initHandler(OrderLogistics.class,
-                OrderServiceBO.of(OrderLogisticsService.class, applicationContext));
-        orderPayServices = initHandler(OrderPay.class,
-                OrderServiceBO.of(OrderPayService.class, applicationContext));
-        orderReviewServices = initHandler(OrderReview.class,
-                OrderServiceBO.of(OrderReviewService.class, applicationContext));
+    @Override
+    public OrderBO review(OrderReviewDTO order) {
+        var type = OrderType.of(order.getType());
+        return orderReviewServices
+                .getHandler(type, applicationContext).review(order);
     }
 
-    protected <T> OrderServiceBO<T> initHandler(Class<? extends Annotation> annotationClazz,
-                                                OrderServiceBO<T> orderService) {
+    @Override
+    public OrderBO logistics(OrderLogisticsDTO order) {
+        var type = OrderType.of(order.getType());
+        return orderLogisticsServices
+                .getHandler(type, applicationContext).logistics(order);
+    }
+
+    /**
+     * 初始化所有订单业务处理器
+     */
+    protected void initServices() {
+        orderBasicsServices = initService(OrderBasics.class, OrderBasicsService.class);
+        orderErpServices = initService(OrderErp.class, OrderErpService.class);
+        orderLogisticsServices = initService(OrderLogistics.class, OrderLogisticsService.class);
+        orderPayServices = initService(OrderPay.class, OrderPayService.class);
+        orderReviewServices = initService(OrderReview.class, OrderReviewService.class);
+    }
+
+    /**
+     * 初始化某一类业务的订单处理器
+     *
+     * @param annotationClazz   业务代表注解
+     * @param orderServiceClazz 业务代表服务
+     */
+    protected <T> OrderServiceBO<T> initService(Class<? extends Annotation> annotationClazz,
+                                                Class<T> orderServiceClazz) {
         var classes = ClassUtil.scanPackageByAnnotation(HANDLER_PACKAGE, annotationClazz);
+        OrderServiceBO<T> orderService = OrderServiceBO.of(orderServiceClazz);
         for (var clazz : classes) {
             var annotation = clazz.getAnnotation(annotationClazz);
-            boolean isDefault = ReflectUtil.invoke(annotation, "isDefault");
-            OrderType type = ReflectUtil.invoke(annotation, "type");
+            var isDefault = (Boolean) ReflectUtil.invoke(annotation, "isDefault");
+            var type = (OrderType) ReflectUtil.invoke(annotation, "type");
             var serviceName = StrUtil.lowerFirst(clazz.getSimpleName());
             orderService.setHandler(type, serviceName, isDefault);
         }
-        if (StrUtil.isBlank(orderService.getDefaultHandlerBeanName())) {
-            throw new IllegalStateException(annotationClazz.getName()
+        if (StrUtil.isBlank(orderService.getDefaultHandler())) {
+            throw new IllegalCallerException(annotationClazz.getName()
                     + " can not find default handler");
         }
         return orderService;

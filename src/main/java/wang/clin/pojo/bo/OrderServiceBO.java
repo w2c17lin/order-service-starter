@@ -13,28 +13,33 @@ import java.util.concurrent.ConcurrentHashMap;
  **/
 public class OrderServiceBO<T> {
 
-    private Class<T> clazz;
-    private ApplicationContext applicationContext;
-
     private String defaultHandler;
+    private final Class<T> clazz;
     private final Map<OrderType, String> handlers = new ConcurrentHashMap<>();
 
-    private OrderServiceBO(Class<T> clazz, ApplicationContext applicationContext) {
+    private OrderServiceBO(Class<T> clazz) {
         this.clazz = clazz;
-        this.applicationContext = applicationContext;
     }
 
-    public static <T> OrderServiceBO<T> of(Class<T> clazz, ApplicationContext applicationContext) {
-        return new OrderServiceBO<>(clazz, applicationContext);
+    public static <T> OrderServiceBO<T> of(Class<T> clazz) {
+        return new OrderServiceBO<>(clazz);
     }
 
-    public String getHandlerBeanName(OrderType type) {
+    public T getHandler(OrderType type, ApplicationContext applicationContext) {
+        return applicationContext.getBean(getHandler(type), clazz);
+    }
+
+    public T getDefaultHandler(ApplicationContext applicationContext) {
+        return applicationContext.getBean(getDefaultHandler(), clazz);
+    }
+
+    public String getHandler(OrderType type) {
         return Optional.ofNullable(this.handlers.get(type))
                 .orElse(defaultHandler);
     }
 
-    public T getHandler(OrderType type) {
-        return applicationContext.getBean(getHandlerBeanName(type), clazz);
+    public String getDefaultHandler() {
+        return defaultHandler;
     }
 
     public void setHandler(OrderType type, String handler) {
@@ -44,14 +49,6 @@ public class OrderServiceBO<T> {
     public void setHandler(OrderType type, String handler, boolean isDefault) {
         if (isDefault) setDefaultHandler(handler);
         setHandler(type, handler);
-    }
-
-    public T getDefaultHandler() {
-        return applicationContext.getBean(defaultHandler, clazz);
-    }
-
-    public String getDefaultHandlerBeanName() {
-        return defaultHandler;
     }
 
     public void setDefaultHandler(String defaultHandler) {

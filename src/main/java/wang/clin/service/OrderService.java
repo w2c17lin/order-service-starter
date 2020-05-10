@@ -1,8 +1,10 @@
 package wang.clin.service;
 
 import wang.clin.pojo.bo.OrderBO;
+import wang.clin.pojo.dto.OrderLogisticsDTO;
 import wang.clin.pojo.dto.OrderOrderDTO;
 import wang.clin.pojo.dto.OrderPayDTO;
+import wang.clin.pojo.dto.OrderReviewDTO;
 
 /**
  * 接口调度器
@@ -25,5 +27,19 @@ public interface OrderService {
      * @param order 支付数据
      */
     OrderBO pay(OrderPayDTO order);
+
+    /**
+     * 执行审核操作
+     *
+     * @param order 审核数据
+     */
+    OrderBO review(OrderReviewDTO order);
+
+    /**
+     * 执行物流操作
+     *
+     * @param order 物流数据
+     */
+    OrderBO logistics(OrderLogisticsDTO order);
 
 }
